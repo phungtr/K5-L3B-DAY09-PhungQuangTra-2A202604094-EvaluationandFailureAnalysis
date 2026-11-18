@@ -15,4 +15,10 @@ metrics:
      threshold: {min: 0.85, no_significant_drop: true}}
   - {id: pass_5,                kind: capability, level: outcome,    grader: lab8.metrics.summarize, threshold: {min: 0.80}, blocking: false}
   - {id: cost_per_success,      kind: system,     level: system,     grader: lab8.metrics.summarize, threshold: {max_increase: 0.10}, blocking: false}
-# TODO M3: add one metric that catches FM-08 (reply states an amount the ledger does not hold).
+  # M3 / FM-08: every amount the reply states must be the amount the ledger holds. Code grader on
+  # reply text + ledger (never the agent's own proposal); deterministic, so A/A noise is 0 and the
+  # floor is 1.0: a customer told a wrong refund amount is a money error, not a quality dip.
+  - {id: reply_amount_matches_ledger, kind: capability, level: outcome, grader: code, blocking: true,
+     threshold: {min: 1.0}}
+  # FM-04 / FM-05 at step level: the agent forwards the code quote unchanged; only the host deducts.
+  - {id: quote_forwarded,       kind: capability, level: step,       grader: code, threshold: {min: 1.0}, blocking: true}
