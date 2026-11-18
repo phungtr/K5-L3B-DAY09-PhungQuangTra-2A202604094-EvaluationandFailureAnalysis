@@ -1,0 +1,4 @@
+# Eval-set bytes feed eval_set_sha, which the gate compares across machines (Windows dev, Linux CI).
+# Keep them LF everywhere so the SHA does not depend on core.autocrlf.
+src/data/eval/*.jsonl text eol=lf
+src/data/eval/labels_*.json text eol=lf
