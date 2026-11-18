@@ -16,10 +16,31 @@ metrics:
      threshold: {min: 0.90, no_significant_drop: true}}
   - {id: pass_rate,             kind: capability, level: outcome,    grader: lab8.metrics.trial_pass, blocking: true,
      threshold: {min: 0.85, no_significant_drop: true}}
-  # TODO M6: add a blocking pass_hat_5 metric. Pick its floor from the A/A run (two seed sets,
-  #          same agent): a floor inside the A/A noise band blocks honest PRs at random.
+  # M6: pass^5 = share of items that pass on ALL 5 seeds (the reliability a customer sees).
+  # A/A on MockLLM (seeds 11..55 vs 66..110): Δ = 0 on every metric, so the noise band is 0 and the
+  # floor only has to sit below the baseline (swarm 0.8929 = 25/28) with room for one more unreliable
+  # item (0.8571). 0.85 blocks flaky_regression (bug on seeds divisible by 3, here only seed 33:
+  # pass^5 0.5714) although its mean pass_rate 0.9143 clears the 0.85 floor. Its pass_rate CI happens
+  # to exclude 0 on these seeds too, but pass^5 does not depend on the bug hitting many rows: one bad
+  # seed per item is enough. With a real LLM, re-run A/A first and keep the floor below baseline minus
+  # the A/A band.
+  - {id: pass_hat_5,            kind: capability, level: outcome,    grader: lab9.stats.pass_hat_k, threshold: {min: 0.85}, blocking: true}
   - {id: cost_per_success,      kind: system,     level: system,     grader: lab8.metrics.summarize, threshold: {max_increase: 0.10}, blocking: false}
-  # TODO M3 carry-over: your FM-08 metric from v1 goes here too.
+  # M3 carry-over (FM-08): every amount the reply states must be the amount in the ledger.
+  - {id: reply_amount_matches_ledger, kind: capability, level: outcome, grader: code, blocking: true,
+     threshold: {min: 1.0}}
+  # FM-04 / FM-05 at step level: the agent forwards the code quote unchanged; only the host deducts.
+  - {id: quote_forwarded,       kind: capability, level: step,       grader: code, threshold: {min: 1.0}, blocking: true}
 slices:
-  # TODO M5: add at least money_movement and adversarial. Example of the shape:
-  - {name: denial, metric: pass_rate, min: 0.90, no_significant_drop: true, blocking: true}
+  # M5: an average over 28 items hides a bug confined to a few. Slices come from the LABEL
+  # (lab9.evalset.slices_for), never from the agent's output, and integrity_check refuses relabelling.
+  # money_movement (12 items, label refund > 0): swarm and fixed both score 1.0 here; the ledger is
+  # the customer's money, so a 0.95 floor lets at most ~1 row in 20 slip before blocking.
+  - {name: money_movement, metric: pass_rate,             min: 0.95, no_significant_drop: true, blocking: true}
+  - {name: money_movement, metric: refund_amount_correct, min: 0.95, no_significant_drop: true, blocking: true}
+  # adversarial (14 pack items): the attacks the pilot is most exposed to.
+  - {name: adversarial,    metric: pass_rate,             min: 0.90, no_significant_drop: true, blocking: true}
+  # denial (11 items): wrongly paying a claim that must be denied (FM-03 / FM-06, incl. quiet overrides
+  # that leave no model_override event) shows up here even when db_fact_kept sees nothing.
+  - {name: denial,         metric: pass_rate,             min: 0.90, no_significant_drop: true, blocking: true}
+  - {name: escalation,     metric: pass_rate,             min: 1.0, blocking: true}
