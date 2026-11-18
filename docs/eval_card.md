@@ -62,6 +62,12 @@ Card này đi kèm mỗi báo cáo và được dùng lại ở Day 10. Mọi s�
 
 **Chống gian lận eval (M7).** `python -m lab9.traps …`: cả 4 trap công khai đều bị chặn với lý do INTEGRITY (`evaluator_errors_as_nan`: 9 dòng không có điểm boolean; `dropped_failing_rows`: 131 ≠ 140 dòng; `cherry_picked_seeds`: thiếu 84 cặp (item, seed); `loosened_spec`: RATCHET). `integrity_check` còn chặn: dòng trùng (item, seed) kể cả khi giữ nguyên tổng số dòng, `evaluator_failures` trên một run "xanh", metric không khớp với rows (sửa tay số), điểm không phải boolean, đổi tag slice, đổi `eval_set_version`/labels/seeds/bootstrap trong spec cùng eval set. Baseline so với chính nó vẫn merge.
 
+**Trap ẩn nào có thể còn lọt?** Hai gợi ý trong CHECKPOINTS đã được chặn và tôi đã thử bằng report tự dựng: *dòng trùng lặp* (kể cả khi bỏ dòng fail rồi nhân đôi dòng pass để giữ đúng 140 dòng → "duplicated (item, seed) rows") và *`evaluator_failures` trên một run xanh* (metric đẹp nhưng grader crash → chặn). Những gì tôi biết vẫn có thể lọt:
+1. **Giả mạo giá trị dòng**: chép điểm của một dòng pass sang dòng fail cùng item (lưới (item, seed), số dòng, slice, metric đều khớp). Report không chứa gì để phân biệt với một lần chạy thật → chỉ chặn được khi CI tự chạy lại eval thay vì đọc report của PR (job `eval-gate` làm vậy cho `swarm`; job v2 chạy lại mọi variant).
+2. **Nới spec mà CI không truyền `--base-spec`**: ratchet chỉ chạy khi gate được so với spec trên `main`. Workflow hiện gọi `lab9.gate` không có `--base-spec`, nên một PR sửa `metric_spec.yaml` cùng lúc sẽ không bị ratchet trong CI. Đề xuất: thêm `--base-spec` lấy từ `git show origin/main:src/config/metric_spec.yaml`.
+3. **Baseline yếu đi cùng PR**: job v2 không đối chiếu `baseline_v2.json` với một lần chạy `swarm` mới (job v1 có `ci_check`). Một baseline_v2 lấy từ shape tệ hơn làm mọi so sánh dễ qua.
+4. **Đổi eval set + baseline trong cùng PR**: SHA khớp nhau nên gate không phản đối; `evalset --check` v2 chặn việc *bỏ* item (luật superset), nhưng không chặn sửa nhãn cho dễ hơn. Cần review bắt buộc cho `data/eval/**` (CODEOWNERS).
+
 Ngoài bộ chấm, tôi tự chạy 36 variant kiểu "ẩn" (mỗi công tắc lỗi riêng lẻ, kèm `intermittent`, kèm `rare`, và 4 refactor vô hại) qua gate này: mọi lỗi bật ở mọi seed hoặc seed lẻ đều bị chặn, kể cả FM-08 ở cả ba dạng; 4 refactor vô hại đều merge.
 
 ## Giới hạn / bằng chứng còn thiếu
